@@ -39,9 +39,15 @@ class LinearKalman(KalmanBase):
                  ):
         """ Constructor for a linear kalman filter
         # Params
-            x0 : the initial state of the system
-            P0 : the initial uncertainty in x0 (covariance)
-            H  : the observation matrix (maps state-space into measurement-space)
+            x0      : initial state of the system
+            P0      : initial uncertainty in x0 (covariance)
+            H       : observation matrix (maps state-space into measurement-space)
+            zn_size : number of measured states 
+            R       : measurement covariances
+            F       : state transition matrix
+            G       : control matrix (maps input-space into state-space)
+            un_size : number of input states
+            Q       : process noise covariance
         """
 
         # Assert preconditions
@@ -81,6 +87,11 @@ class LinearKalman(KalmanBase):
     def predict(self,
                 u_n: Union[np.ndarray, None] = None,
                 ) -> None:
+        """ The predict step of the kalman filter
+        # Params
+            u_n : the input vector to the system. Assumed to be the zero vector
+                    if left empty. 
+        """
         # fill with zeros
         u_n = _guard_none(u_n, lambda: np.zeros(shape=(self.un_size, )))
 
@@ -90,14 +101,21 @@ class LinearKalman(KalmanBase):
         # update covariances: P_n+1  = F P_n F^T + Q
         self.Pn = self.F @ self.Pn @ self.F.T + self.Q
 
-    def update(self, zn) -> None:
+    def update(self, z_n) -> None:
+        """The update step of the kalman filter
+        # Params:
+            zn : the measurement vector 
+        """
+
         kalman_gain = self.Pn @ self.H.T @ np.linalg.inv(
             (self.H @ self.Pn @ self.H.T + self.R))
-        self.xn = self.xn + kalman_gain @ (zn - self.H @ self.xn)
+        self.xn = self.xn + kalman_gain @ (z_n - self.H @ self.xn)
 
         intermediate = (self.I - kalman_gain @ self.H)
         self.Pn = intermediate @ self.Pn @ intermediate.T + \
             kalman_gain @ self.R @ kalman_gain.T
 
     def measure(self) -> Tuple[np.ndarray, np.ndarray]:
+        """ returns current state and associated covariance.
+        """
         return self.xn, self.Pn
