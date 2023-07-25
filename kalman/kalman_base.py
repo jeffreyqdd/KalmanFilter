@@ -10,15 +10,15 @@ class Generics:
 
 class KalmanBase(ABC):
     @abstractclassmethod
-    def predict(self):
-        raise NotImplemented('KalmanBase.predict')
+    def predict(self, u_n: Union[np.ndarray, None]) -> None:
+        raise NotImplementedError('KalmanBase.predict')
 
     @abstractclassmethod
-    def update(self):
-        raise NotImplemented('KalmanBase.update')
+    def update(self, z_n: np.ndarray) -> None:
+        raise NotImplementedError('KalmanBase.update')
 
 
-def _guard_none(item: Generics.T, alt: Callable[[None], Generics.T]) -> Generics.T:
+def _guard_none(item: Union[Generics.T, None], alt: Callable[[], Generics.T]) -> Generics.T:
     if item is None:
         return alt()
     else:
@@ -70,11 +70,8 @@ class LinearKalman(KalmanBase):
         self.zn_size: int = zn_size
         self.I = np.identity(state_size)
 
-        if isinstance(Q, int):
-            self.Q: np.ndarray = np.eye(state_size) * Q
-        else:
-            self.Q: np.ndarray = Q
-        print(Q)
+        self.Q: np.ndarray = np.eye(state_size) * \
+            Q if isinstance(Q, int) else Q
 
         # assert correct dimensions
         assert self.Pn.shape == (state_size, state_size)
@@ -84,9 +81,7 @@ class LinearKalman(KalmanBase):
         assert self.H.shape == (zn_size, state_size)
         assert self.R.shape == (zn_size, zn_size)
 
-    def predict(self,
-                u_n: Union[np.ndarray, None] = None,
-                ) -> None:
+    def predict(self, u_n=None):
         """ The predict step of the kalman filter
         # Params
             u_n : the input vector to the system. Assumed to be the zero vector
